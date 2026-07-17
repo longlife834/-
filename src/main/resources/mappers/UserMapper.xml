@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.five.mapper.UserMapper">
+
+    <resultMap id="UserMap" type="com.five.entity.User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="email" column="email"/>
+        <result property="phone" column="phone"/>
+        <result property="avatar" column="avatar"/>
+        <result property="role" column="role"/>
+        <result property="enabled" column="enabled"/>
+        <result property="isDeleted" column="is_deleted"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="getAllUsers" resultMap="UserMap">
+        SELECT * FROM user WHERE is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (username LIKE CONCAT('%',#{keyword},'%') OR phone LIKE CONCAT('%',#{keyword},'%'))
+        </if>
+        <if test="role != null and role != ''">
+            AND role = #{role}
+        </if>
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+        ORDER BY id ASC
+        LIMIT #{offset},#{size}
+    </select>
+
+
+<!--    统计用户的总数-->
+    <select id="countUser" resultType="long">
+        SELECT COUNT(*) FROM user WHERE is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (username LIKE CONCAT('%',#{keyword},'%')
+                OR phone LIKE CONCAT('%',#{keyword},'%'))
+        </if>
+        <if test="role != null and role != ''">
+            AND role = #{role}
+        </if>
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+    </select>
+<!--    根据用户ID查询用户-->
+    <select id="getUserById" resultMap="UserMap">
+        SELECT * FROM user WHERE  id = #{id}
+    </select>
+
+<!--    根据用户名查询用户-->
+    <select id="getUserByName" resultMap="UserMap">
+        select * from user where username = #{username}
+    </select>
+
+<!--    添加用户-->
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user(username,password,email,phone,avatar,role,enabled,is_deleted,create_time,update_time)
+        VALUES (#{username},#{password},#{email},#{phone},#{avatar},#{role},#{enabled},0,now(),now())
+    </insert>
+
+    <update id="updateUser">
+        UPDATE user
+        SET username = #{username},
+            email = #{email},
+            phone = #{phone},
+            avatar = #{avatar},
+            role = #{role},
+            enabled = #{enabled},
+            update_time = now()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateUserStatus">
+        UPDATE user
+        SET enabled = #{enabled},
+            update_time = now()
+        WHERE id = #{id}
+    </update>
+
+<!--    删除用户-->
+    <delete id="deleteUserById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+<!--修改用户密码-->
+    <update id="updatePassword">
+        UPDATE user SET password = #{password}, update_time = now() WHERE id = #{id}
+    </update>
+</mapper>

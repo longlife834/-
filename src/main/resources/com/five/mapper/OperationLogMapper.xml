@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.five.mapper.OperationLogMapper">
+
+    <resultMap id="OpLogMap" type="com.five.entity.OperationLog">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="module" column="module"/>
+        <result property="operation" column="operation"/>
+        <result property="description" column="description"/>
+        <result property="ip" column="ip"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+<!--插入操作日志
+-->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO operation_log(username, module, operation, description, ip, create_time)
+        VALUES(#{username}, #{module}, #{operation}, #{description}, #{ip}, NOW())
+    </insert>
+<!--分页查询日志列表-->
+    <select id="list" resultMap="OpLogMap">
+        SELECT * FROM operation_log
+        WHERE 1 = 1
+        <if test="module != null and module != ''">
+            AND module = #{module}
+        </if>
+        <if test="operation != null and operation != ''">
+            AND operation = #{operation}
+        </if>
+        ORDER BY id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+<!-- 统计日志总数（动态 SQL）统计符合筛选条件的日志总数-->
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM operation_log
+        WHERE 1 = 1
+        <if test="module != null and module != ''">
+            AND module = #{module}
+        </if>
+        <if test="operation != null and operation != ''">
+            AND operation = #{operation}
+        </if>
+    </select>
+
+</mapper>

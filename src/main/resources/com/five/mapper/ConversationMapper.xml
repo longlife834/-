@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.five.mapper.ConversationMapper">
+<!--结果映射 将数据库列名映射到 Java 实体类的属性-->
+    <resultMap id="ConversationMap" type="com.five.entity.Conversation">
+        <id property="id" column="id"/>
+        <result property="user1Id" column="user1_id"/>
+        <result property="user2Id" column="user2_id"/>
+        <result property="itemType" column="item_type"/>
+        <result property="itemId" column="item_id"/>
+        <result property="lastMessage" column="last_message"/>
+        <result property="lastTime" column="last_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="otherUsername" column="other_username"/>
+        <result property="otherAvatar" column="other_avatar"/>
+        <result property="unreadCount" column="unread_count"/>
+    </resultMap>
+<!--查询会话列表-->
+    <select id="findByUserId" resultMap="ConversationMap">
+        SELECT
+            c.*, <!--查询 conversation 表的所有字段-->
+            CASE WHEN c.user1_id = #{userId} THEN u2.username ELSE u1.username END AS other_username,
+            CASE WHEN c.user1_id = #{userId} THEN u2.avatar ELSE u1.avatar END AS other_avatar,
+            (SELECT COUNT(*) FROM message m
+             WHERE m.conversation_id = c.id
+               AND m.sender_id != #{userId}
+               AND m.is_read = 0) AS unread_count
+        FROM conversation c
+        LEFT JOIN user u1 ON c.user1_id = u1.id
+        LEFT JOIN user u2 ON c.user2_id = u2.id
+        WHERE (c.user1_id = #{userId} OR c.user2_id = #{userId})
+          AND NOT (c.user1_id = #{userId} AND c.user1_deleted = 1)
+          AND NOT (c.user2_id = #{userId} AND c.user2_deleted = 1)
+        ORDER BY COALESCE(c.last_time, c.create_time) DESC
+    </select>
+<!--根据 ID 查询单个会话-->
+    <select id="findById" resultMap="ConversationMap">
+        SELECT * FROM conversation WHERE id = #{id}
+    </select>
+<!--查找用户对之间的会话（防重复）-->
+    <select id="findByUserPair" resultMap="ConversationMap">
+        SELECT * FROM conversation
+        WHERE (
+            (user1_id = #{user1Id} AND user2_id = #{user2Id})
+            OR
+            (user1_id = #{user2Id} AND user2_id = #{user1Id})
+        )
+        <if test="itemType != null and itemId != null">
+            AND item_type = #{itemType} AND item_id = #{itemId}
+        </if>
+        <if test="itemType == null or itemId == null">
+            AND item_type IS NULL AND item_id IS NULL
+        </if>
+        LIMIT 1
+    </select>
+<!--插入新会话-->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO conversation(user1_id, user2_id, item_type, item_id, last_message, last_time, create_time, updated_at)
+        VALUES(#{user1Id}, #{user2Id}, #{itemType}, #{itemId}, #{lastMessage}, NOW(), NOW(), NOW())
+    </insert>
+<!--更新最后一条消息-->
+    <update id="updateLastMessage">
+        UPDATE conversation
+        SET last_message = #{lastMessage},
+            last_time = #{lastTime},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+<!--统计未读总数-->
+    <select id="countUnreadByUserId" resultType="int">
+        SELECT COUNT(*) FROM message m
+        JOIN conversation c ON m.conversation_id = c.id
+        WHERE (c.user1_id = #{userId} OR c.user2_id = #{userId})
+          AND m.sender_id != #{userId}
+          AND m.is_read = 0
+          AND NOT (c.user1_id = #{userId} AND c.user1_deleted = 1)
+          AND NOT (c.user2_id = #{userId} AND c.user2_deleted = 1)
+    </select>
+<!--标记用户删除会话（软删除）-->
+    <update id="markDeletedForUser">
+        UPDATE conversation
+        SET user1_deleted = CASE WHEN user1_id = #{userId} THEN 1 ELSE user1_deleted END,
+            user2_deleted = CASE WHEN user2_id = #{userId} THEN 1 ELSE user2_deleted END
+        WHERE id = #{id}
+    </update>
+<!--物理删除会话（双方都删除时）
+-->
+    <delete id="deleteIfBothDeleted">
+        DELETE FROM conversation WHERE id = #{id} AND user1_deleted = 1 AND user2_deleted = 1
+    </delete>
+</mapper>
