@@ -11,6 +11,8 @@
 
 ## 如何运行
 **后端**: 依次启动 Nacos、MySQL 和各微服务模块
+![Uploading image.png…]()
+
 **前端**: `cd vue` 然后 `npm install && npm run dev`
 
 ## ✨ 核心功能
